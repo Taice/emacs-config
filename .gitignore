@@ -1,0 +1,11 @@
+.lsp-session-v1
+config.el
+auto-save-list
+projectile-bookmarks.eld
+recentf
+tramp
+eln-cache/
+elpa/
+elpaca/
+snippets/
+tree-sitter/
