@@ -26,7 +26,6 @@
 - [[#ivy][Ivy]]
 - [[#all-the-icons][All the Icons]]
 - [[#font-icons][Font icons]]
-- [[#auto-save-and-backup-files][Auto Save and backup files]]
 - [[#shells-and-terminals][Shells and Terminals]]
   - [[#eshell][Eshell]]
   - [[#vterm][Vterm]]
@@ -51,6 +50,7 @@
 - [[#diminish][Diminish]]
 - [[#centered-scrolling][Centered scrolling]]
 - [[#pairs---][Pairs ([], (), {})]]
+- [[#auto-save-and-backup-files][Auto Save and backup files]]
 
 * Elpaca Package Manager
 #+begin_src emacs-lisp
@@ -382,15 +382,6 @@ Org-bullets gives us attractive bullets rather than asterisks.
 #+begin_src emacs-lisp
   (use-package nerd-icons)
 #+end_src
-* Auto Save and backup files
-#+begin_src emacs-lisp
-  ;; Disable backup files (file~)
-  (setq make-backup-files nil)
-  ;; Disable auto-save files (#file#)
-  (setq auto-save-default nil)
-  ;; Disable lock files (.#file)
-  (setq create-lockfiles nil)
-#+end_src>
 * Shells and Terminals
 ** Eshell
 #+begin_src emacs-lisp
@@ -677,3 +668,11 @@ For Projects integration with dashboard
     (global-evil-surround-mode 1))
 
 #+end_src
+
+* Auto Save and backup files
+#+begin_src emacs-lisp
+  ;; Disable backup files (file~)
+  (setq make-backup-files nil)
+  ;; Disable auto-save files (#file#)
+  (setq auto-save-default nil)
+#+end_src>
