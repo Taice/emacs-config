@@ -7,6 +7,8 @@
 * TABLE OF CONTENTS :toc:
 - [[#elpaca-package-manager][Elpaca Package Manager]]
 - [[#evil-mode][Evil Mode]]
+  - [[#evil-mode-1][Evil mode]]
+  - [[#evil-surround][Evil-surround]]
 - [[#general-keybinds][General Keybinds]]
 - [[#which-key][Which-key]]
 - [[#gui-tweaks][GUI Tweaks]]
@@ -35,6 +37,7 @@
 - [[#dashboard][Dashboard]]
 - [[#projectile][Projectile]]
 - [[#lsp][LSP]]
+  - [[#treesitter][Treesitter]]
   - [[#kdl-mode][Kdl mode]]
   - [[#zig-mode][Zig mode]]
   - [[#lsp-mode][Lsp mode]]
@@ -44,58 +47,56 @@
   - [[#c-hooks][C hooks]]
   - [[#formatter][Formatter]]
 - [[#highlight-todos][Highlight Todos]]
-- [[#git][Git]]
-  - [[#git-time-machine][Git time machine]]
   - [[#magit][Magit]]
 - [[#diminish][Diminish]]
 - [[#centered-scrolling][Centered scrolling]]
-- [[#pairs---][Pairs ([], (), {})]]
 - [[#auto-save-and-backup-files][Auto Save and backup files]]
 
 * Elpaca Package Manager
 #+begin_src emacs-lisp
-(defvar elpaca-installer-version 0.11)
-(defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
-(defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
-(defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
-(defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
-                              :ref nil :depth 1 :inherit ignore
-                              :files (:defaults "elpaca-test.el" (:exclude "extensions"))
-                              :build (:not elpaca--activate-package)))
-(let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
-       (build (expand-file-name "elpaca/" elpaca-builds-directory))
-       (order (cdr elpaca-order))
-       (default-directory repo))
-  (add-to-list 'load-path (if (file-exists-p build) build repo))
-  (unless (file-exists-p repo)
-    (make-directory repo t)
-    (when (<= emacs-major-version 28) (require 'subr-x))
-    (condition-case-unless-debug err
-        (if-let* ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
-                  ((zerop (apply #'call-process `("git" nil ,buffer t "clone"
-                                                  ,@(when-let* ((depth (plist-get order :depth)))
-                                                      (list (format "--depth=%d" depth) "--no-single-branch"))
-                                                  ,(plist-get order :repo) ,repo))))
-                  ((zerop (call-process "git" nil buffer t "checkout"
-                                        (or (plist-get order :ref) "--"))))
-                  (emacs (concat invocation-directory invocation-name))
-                  ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
-                                        "--eval" "(byte-recompile-directory \".\" 0 'force)")))
-                  ((require 'elpaca))
-                  ((elpaca-generate-autoloads "elpaca" repo)))
-            (progn (message "%s" (buffer-string)) (kill-buffer buffer))
-          (error "%s" (with-current-buffer buffer (buffer-string))))
-      ((error) (warn "%s" err) (delete-directory repo 'recursive))))
-  (unless (require 'elpaca-autoloads nil t)
-    (require 'elpaca)
-    (elpaca-generate-autoloads "elpaca" repo)
-    (let ((load-source-file-function nil)) (load "./elpaca-autoloads"))))
-(add-hook 'after-init-hook #'elpaca-process-queues)
-(elpaca `(,@elpaca-order))
+  (defvar elpaca-installer-version 0.11)
+  (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
+  (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
+  (defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
+  (defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
+                                :ref nil :depth 1 :inherit ignore
+                                :files (:defaults "elpaca-test.el" (:exclude "extensions"))
+                                :build (:not elpaca--activate-package)))
+  (let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
+         (build (expand-file-name "elpaca/" elpaca-builds-directory))
+         (order (cdr elpaca-order))
+         (default-directory repo))
+    (add-to-list 'load-path (if (file-exists-p build) build repo))
+    (unless (file-exists-p repo)
+      (make-directory repo t)
+      (when (<= emacs-major-version 28) (require 'subr-x))
+      (condition-case-unless-debug err
+          (if-let* ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
+                    ((zerop (apply #'call-process `("git" nil ,buffer t "clone"
+                                                    ,@(when-let* ((depth (plist-get order :depth)))
+                                                        (list (format "--depth=%d" depth) "--no-single-branch"))
+                                                    ,(plist-get order :repo) ,repo))))
+                    ((zerop (call-process "git" nil buffer t "checkout"
+                                          (or (plist-get order :ref) "--"))))
+                    (emacs (concat invocation-directory invocation-name))
+                    ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
+                                          "--eval" "(byte-recompile-directory \".\" 0 'force)")))
+                    ((require 'elpaca))
+                    ((elpaca-generate-autoloads "elpaca" repo)))
+              (progn (message "%s" (buffer-string)) (kill-buffer buffer))
+            (error "%s" (with-current-buffer buffer (buffer-string))))
+        ((error) (warn "%s" err) (delete-directory repo 'recursive))))
+    (unless (require 'elpaca-autoloads nil t)
+      (require 'elpaca)
+      (elpaca-generate-autoloads "elpaca" repo)
+      (let ((load-source-file-function nil)) (load "./elpaca-autoloads"))))
+  (add-hook 'after-init-hook #'elpaca-process-queues)
+  (elpaca `(,@elpaca-order))
 #+end_src
 * Evil Mode
+** Evil mode
 #+begin_src emacs-lisp
-    ;; Install use-package support
+  ;; Install use-package support
   (elpaca elpaca-use-package
     ;; Enable :elpaca use-package keyword.
     (elpaca-use-package-mode)
@@ -114,29 +115,37 @@
 
   ;; Expands to: (elpaca evil (use-package evil :demand t))
   (use-package evil
-      :init      ;; tweak evil's configuration before loading it
-      (setq evil-want-integration t) ;; This is optional since it's already set to t by default.
-      (setq evil-want-keybinding nil)
-      (setq evil-vsplit-window-right t)
-      (setq evil-split-window-below t)
-      (evil-mode))
-    (use-package evil-collection
-      :after evil
-      :config
-      (setq evil-collection-mode-list '(dashboard dired ibuffer))
-      (evil-collection-init))
-    (use-package evil-tutor)
+    :init      ;; tweak evil's configuration before loading it
+    (setq evil-want-integration t) ;; This is optional since it's already set to t by default.
+    (setq evil-want-keybinding nil)
+    (setq evil-vsplit-window-right t)
+    (setq evil-split-window-below t)
+    (evil-mode))
+  (use-package evil-collection
+    :after evil
+    :config
+    (setq evil-collection-mode-list '(dashboard dired ibuffer))
+    (evil-collection-init))
+  (use-package evil-tutor)
 
   ;;Turns off elpaca-use-package-mode current declartion
   ;;Note this will cause the declaration to be interpreted immediately (not deferred).
   ;;Useful for configuring built-in emacs features.
   (use-package emacs :ensure nil :config (setq ring-bell-function #'ignore))
 #+end_src
+** Evil-surround
+#+begin_src emacs-lisp
+  (electric-pair-mode 1)
+  (use-package evil-surround
+    :ensure t
+    :config
+    (global-evil-surround-mode 1))
+#+end_src
 * General Keybinds
 #+begin_src emacs-lisp
-    (use-package general
-      :config
-      (general-evil-setup)
+  (use-package general
+    :config
+    (general-evil-setup)
     
     ;; set up 'SPC' as the global leader key
     (general-create-definer my/leader-keys
@@ -180,8 +189,8 @@
       "hf" '(describe-function :wk "Help function")
       "hv" '(describe-variable :wk "Help variable")
       "hr" '((lambda () (interactive)
-  	       (load-file "~/.config/emacs/init.el"))
-  	       :wk "Reload emacs"))
+  	     (load-file "~/.config/emacs/init.el"))
+  	   :wk "Reload emacs"))
     ;; Toggle
     (my/leader-keys
       "t" '(:ignore t :wk "Toggle/tabs")
@@ -207,27 +216,42 @@
       "lg" '(lsp-find-definition :wk "Go to definition")
       "li" '(lsp-goto-implementation :wk "Go to definition")
       "lc" '(compile :wk "Compile code with specified command"))
-  )
+    ;; Cargo
+    (my/leader-keys
+      "cc" '(:ignore t :wk "Cargo/rust stuff")
+      "ccr" '(rustic-cargo-run-rerun :wk "Run with rustic-run-arguments")
+      "cct" '(rustic-cargo-test :wk "Run cargo test")
+      "cca" '(rustic-cargo-add :wk "Add cargo dependency"))
+    ;; Magit
+    (my/leader-keys
+      "g" '(:ignore t :which-key "git")
+      "gs" '(magit-status :which-key "status")
+      "gc" '(magit-commit :which-key "commit")
+      "gb" '(magit-branch :which-key "branch")
+      "gl" '(magit-log :which-key "log")
+      "gp" '(magit-pull :which-key "pull")
+      "gP" '(magit-push :which-key "push"))
+    )
 #+end_src
 
 * Which-key
 #+begin_src emacs-lisp
   (use-package which-key
     :init
-      (which-key-mode 1)
+    (which-key-mode 1)
     :config
     (setq which-key-side-window-location 'bottom
-	  which-key-sort-order #'which-key-key-order-alpha
-	  which-key-sort-uppercase-first nil
-	  which-key-add-column-padding 1
-	  which-key-max-display-columns nil
-	  which-key-min-display-lines 6
-	  which-key-side-window-slot -10
-	  which-key-side-window-max-height 0.25
-	  which-key-idle-delay 0.8
-	  which-key-max-description-length 25
-	  which-key-allow-imprecise-window-fit nil
-	  which-key-separator " → " ))
+  	which-key-sort-order #'which-key-key-order-alpha
+  	which-key-sort-uppercase-first nil
+  	which-key-add-column-padding 1
+  	which-key-max-display-columns nil
+  	which-key-min-display-lines 6
+  	which-key-side-window-slot -10
+  	which-key-side-window-max-height 0.25
+  	which-key-idle-delay 0.8
+  	which-key-max-description-length 25
+  	which-key-allow-imprecise-window-fit nil
+  	which-key-separator " → " ))
 #+end_src
 
 * GUI Tweaks
@@ -235,16 +259,16 @@ Let's make GNU Emacs look a little better.
 
 ** Disable Menubar, Toolbars and Scrollbars
 #+begin_src emacs-lisp
-(menu-bar-mode -1)
-(tool-bar-mode -1)
-(scroll-bar-mode -1)
+  (menu-bar-mode -1)
+  (tool-bar-mode -1)
+  (scroll-bar-mode -1)
 #+end_src
 
 ** Display Line Numbers and Truncated Lines
 #+begin_src emacs-lisp
-(setq display-line-numbers-type 'relative) 
-(global-display-line-numbers-mode)
-(global-visual-line-mode t)
+  (setq display-line-numbers-type 'relative) 
+  (global-display-line-numbers-mode)
+  (global-visual-line-mode t)
 #+end_src
 
 * Fonts
@@ -253,23 +277,23 @@ Defining the various fonts that Emacs will use.
 
 #+begin_src emacs-lisp
   (set-face-attribute 'default nil
-    :font "Iosevka"
-    :height 110
-    :weight 'medium)
+  		    :font "Iosevka"
+  		    :height 110
+  		    :weight 'medium)
   (set-face-attribute 'variable-pitch nil
-    :font "Iosevka"
-    :height 120
-    :weight 'medium)
+  		    :font "Iosevka"
+  		    :height 120
+  		    :weight 'medium)
   (set-face-attribute 'fixed-pitch nil
-    :font "Iosevka"
-    :height 110
-    :weight 'medium)
+  		    :font "Iosevka"
+  		    :height 110
+  		    :weight 'medium)
   ;; Makes commented text and keywords italics.
   ;; Your font must have an italic face available.
   (set-face-attribute 'font-lock-comment-face nil
-    :slant 'italic)
+  		    :slant 'italic)
   (set-face-attribute 'font-lock-keyword-face nil
-    :slant 'italic)
+  		    :slant 'italic)
 
   ;; This sets the default font on all graphical frames created after restarting Emacs.
   ;; Does the same thing as 'set-face-attribute default' above, but emacsclient fonts
@@ -290,8 +314,8 @@ Defining the various fonts that Emacs will use.
 ** Enabling Table of Contents
 #+begin_src emacs-lisp
   (use-package toc-org
-      :commands toc-org-enable
-      :init (add-hook 'org-mode-hook 'toc-org-enable))
+    :commands toc-org-enable
+    :init (add-hook 'org-mode-hook 'toc-org-enable))
 #+end_src
 
 ** Enabling Org Bullets
@@ -310,20 +334,20 @@ Org-bullets gives us attractive bullets rather than asterisks.
 * Sudo edit
 - Sudo edit allows editing files behind sudo privileges
 #+begin_src emacs-lisp
-    (use-package sudo-edit
-      :config 
-      ;; Keybinds
-      (my/leader-keys
-        "s" '(:ignore t :wk "Sudo edit")
-        "sf" '(sudo-edit-find-file :wk "Find sudo file to edit")
-        "se" '(sudo-edit :wk "Edit this file with sudo"))
-  )
+  (use-package sudo-edit
+    :config 
+    ;; Keybinds
+    (my/leader-keys
+      "s" '(:ignore t :wk "Sudo edit")
+      "sf" '(sudo-edit-find-file :wk "Find sudo file to edit")
+      "se" '(sudo-edit :wk "Edit this file with sudo"))
+    )
 #+end_src
 * Theme
 ** Gruber Darker
 #+begin_src emacs-lisp
   (use-package gruber-darker-theme
-      :ensure t)
+    :ensure t)
 #+end_src
 
 ** Sima boi
@@ -336,47 +360,47 @@ Org-bullets gives us attractive bullets rather than asterisks.
 - Counsel is a collection of Ivy-enhancev ersions of commen Emacs commands.
 - Ivy-rich provides decsriptions to comands in M-x.
   #+begin_src emacs-lisp
-(use-package counsel
-  :after ivy
-  :config (counsel-mode))
+    (use-package counsel
+      :after ivy
+      :config (counsel-mode))
 
-(use-package ivy
-  :bind
-  ;; ivy-resume resumes the last Ivy-based completion.
-  (("C-c C-r" . ivy-resume)
-   ("C-x B" . ivy-switch-buffer-other-window))
-  :custom
-  (setq ivy-use-virtual-buffers t)
-  (setq ivy-count-format "(%d/%d) ")
-  (setq enable-recursive-minibuffers t)
-  :config
-  (ivy-mode))
+    (use-package ivy
+      :bind
+      ;; ivy-resume resumes the last Ivy-based completion.
+      (("C-c C-r" . ivy-resume)
+       ("C-x B" . ivy-switch-buffer-other-window))
+      :custom
+      (setq ivy-use-virtual-buffers t)
+      (setq ivy-count-format "(%d/%d) ")
+      (setq enable-recursive-minibuffers t)
+      :config
+      (ivy-mode))
 
-(use-package all-the-icons-ivy-rich
-  :ensure t
-  :init (all-the-icons-ivy-rich-mode 1))
+    (use-package all-the-icons-ivy-rich
+      :ensure t
+      :init (all-the-icons-ivy-rich-mode 1))
 
-(use-package ivy-rich
-  :after ivy
-  :ensure t
-  :init (ivy-rich-mode 1) ;; this gets us descriptions in M-x.
-  :custom
-  (ivy-virtual-abbreviate 'full
-   ivy-rich-switch-buffer-align-virtual-buffer t
-   ivy-rich-path-style 'abbrev)
-  :config
-  (ivy-set-display-transformer 'ivy-switch-buffer
-                               'ivy-rich-switch-buffer-transformer))
+    (use-package ivy-rich
+      :after ivy
+      :ensure t
+      :init (ivy-rich-mode 1) ;; this gets us descriptions in M-x.
+      :custom
+      (ivy-virtual-abbreviate 'full
+    			  ivy-rich-switch-buffer-align-virtual-buffer t
+    			  ivy-rich-path-style 'abbrev)
+      :config
+      (ivy-set-display-transformer 'ivy-switch-buffer
+                                   'ivy-rich-switch-buffer-transformer))
   #+end_src
   
 * All the Icons
 #+begin_src emacs-lisp
-(use-package all-the-icons
-  :ensure t
-  :if (display-graphic-p))
+  (use-package all-the-icons
+    :ensure t
+    :if (display-graphic-p))
 
-(use-package all-the-icons-dired
-  :hook (dired-mode . (lambda () (all-the-icons-dired-mode t))))
+  (use-package all-the-icons-dired
+    :hook (dired-mode . (lambda () (all-the-icons-dired-mode t))))
 #+end_src
 * Font icons
 #+begin_src emacs-lisp
@@ -385,75 +409,75 @@ Org-bullets gives us attractive bullets rather than asterisks.
 * Shells and Terminals
 ** Eshell
 #+begin_src emacs-lisp
-(use-package eshell-syntax-highlighting
-  :after esh-mode
-  :config
-  (eshell-syntax-highlighting-global-mode +1))
+  (use-package eshell-syntax-highlighting
+    :after esh-mode
+    :config
+    (eshell-syntax-highlighting-global-mode +1))
 
-;; eshell-syntax-highlighting -- adds fish/zsh-like syntax highlighting.
-;; eshell-rc-script -- your profile for eshell; like a bashrc for eshell.
-;; eshell-aliases-file -- sets an aliases file for the eshell.
-  
-(setq eshell-rc-script (concat user-emacs-directory "eshell/profile")
-      eshell-aliases-file (concat user-emacs-directory "eshell/aliases")
-      eshell-history-size 5000
-      eshell-buffer-maximum-lines 5000
-      eshell-hist-ignoredups t
-      eshell-scroll-to-bottom-on-input t
-      eshell-destroy-buffer-when-process-dies t
-      eshell-visual-commands'("bash" "fish" "htop" "ssh" "top" "zsh"))
+  ;; eshell-syntax-highlighting -- adds fish/zsh-like syntax highlighting.
+  ;; eshell-rc-script -- your profile for eshell; like a bashrc for eshell.
+  ;; eshell-aliases-file -- sets an aliases file for the eshell.
+
+  (setq eshell-rc-script (concat user-emacs-directory "eshell/profile")
+        eshell-aliases-file (concat user-emacs-directory "eshell/aliases")
+        eshell-history-size 5000
+        eshell-buffer-maximum-lines 5000
+        eshell-hist-ignoredups t
+        eshell-scroll-to-bottom-on-input t
+        eshell-destroy-buffer-when-process-dies t
+        eshell-visual-commands'("bash" "fish" "htop" "ssh" "top" "zsh"))
 #+end_src
 ** Vterm
 #+begin_src emacs-lisp
-(use-package vterm
-:config
-(setq shell-file-name "/bin/sh"
-      vterm-max-scrollback 5000))
+  (use-package vterm
+    :config
+    (setq shell-file-name "/bin/sh"
+  	vterm-max-scrollback 5000))
 #+end_src
 ** Vterm-toggle
 #+begin_src emacs-lisp
-(use-package vterm-toggle
-  :after vterm
-  :config
-  (setq vterm-toggle-fullscreen-p nil)
-  (setq vterm-toggle-scope 'project)
-  (add-to-list 'display-buffer-alist
-               '((lambda (buffer-or-name _)
+  (use-package vterm-toggle
+    :after vterm
+    :config
+    (setq vterm-toggle-fullscreen-p nil)
+    (setq vterm-toggle-scope 'project)
+    (add-to-list 'display-buffer-alist
+                 '((lambda (buffer-or-name _)
                      (let ((buffer (get-buffer buffer-or-name)))
                        (with-current-buffer buffer
                          (or (equal major-mode 'vterm-mode)
                              (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
-                  (display-buffer-reuse-window display-buffer-at-bottom)
-                  ;;(display-buffer-reuse-window display-buffer-in-direction)
-                  ;;display-buffer-in-direction/direction/dedicated is added in emacs27
-                  ;;(direction . bottom)
-                  ;;(dedicated . t) ;dedicated is supported in emacs27
-                  (reusable-frames . visible)
-                  (window-height . 0.6))))
+                   (display-buffer-reuse-window display-buffer-at-bottom)
+                   ;;(display-buffer-reuse-window display-buffer-in-direction)
+                   ;;display-buffer-in-direction/direction/dedicated is added in emacs27
+                   ;;(direction . bottom)
+                   ;;(dedicated . t) ;dedicated is supported in emacs27
+                   (reusable-frames . visible)
+                   (window-height . 0.6))))
 #+end_src
 * Move Text
 #+begin_src emacs-lisp
-(defun move-word-left ()
-  "Move the word at point one word to the left."
-  (interactive)
-  (transpose-words -1))
+  (defun move-word-left ()
+    "Move the word at point one word to the left."
+    (interactive)
+    (transpose-words -1))
 
-(defun move-word-right ()
-  "Move the word at point one word to the right."
-  (interactive)
-  (transpose-words 1))
+  (defun move-word-right ()
+    "Move the word at point one word to the right."
+    (interactive)
+    (transpose-words 1))
 
-;; Load and configure move-text
-(use-package move-text
-  :ensure t
-  :config
-  ;; Bind keys in normal and visual mode
-  (general-define-key
-   :states '(normal visual)
-   "H" 'move-word-left
-   "L" 'move-word-right
-   "J" 'move-text-down
-   "K" 'move-text-up))
+  ;; Load and configure move-text
+  (use-package move-text
+    :ensure t
+    :config
+    ;; Bind keys in normal and visual mode
+    (general-define-key
+     :states '(normal visual)
+     "H" 'move-word-left
+     "L" 'move-word-right
+     "J" 'move-text-down
+     "K" 'move-text-up))
 #+end_src
 
 * Colorizer
@@ -470,7 +494,7 @@ Org-bullets gives us attractive bullets rather than asterisks.
     (setq initial-buffer-choice 'dashboard-open)
     (setq dashboard-set-heading-icons t)
     (setq dashboard-set-file-icons t)
-  ;;(setq dashboard-startup-banner 'logo) ;; use standard emacs logo as banner
+    ;;(setq dashboard-startup-banner 'logo) ;; use standard emacs logo as banner
     (setq dashboard-startup-banner "~/.config/emacs/images/funny-cat.jpg")  ;; use custom image as banner
     (setq dashboard-center-content t) ;; set to 't' for centered content
     (setq dashboard-set-footer nil)
@@ -495,6 +519,17 @@ For Projects integration with dashboard
 #+end_src
 
 * LSP
+** Treesitter
+#+begin_src emacs-lisp
+  (use-package tree-sitter
+    :ensure t
+    :hook ((prog-mode . tree-sitter-mode)
+           (tree-sitter-after-on . tree-sitter-hl-mode)))
+
+  (use-package tree-sitter-langs
+    :after tree-sitter
+    :ensure t)
+#+end_src
 ** Kdl mode
 #+begin_src emacs-lisp
   (use-package kdl-mode)
@@ -596,47 +631,52 @@ For Projects integration with dashboard
 #+end_src
 ** Formatter
 #+begin_src emacs-lisp
-(use-package format-all
-  :preface
-  (defun format-code ()
-    "Auto-format whole buffer."
-    (interactive)
-    (if (derived-mode-p 'prolog-mode)
-        (prolog-indent-buffer)
-      (format-all-buffer)))
-  :config
-  (my/leader-keys "lf" '(format-code :wk "Format buffer"))
-  (add-hook 'prog-mode-hook #'format-all-ensure-formatter))
+  (use-package format-all
+    :preface
+    (defun format-code ()
+      "Auto-format whole buffer."
+      (interactive)
+      (if (derived-mode-p 'prolog-mode)
+          (prolog-indent-buffer)
+        (format-all-buffer)))
+    :config
+    (my/leader-keys "lf" '(format-code :wk "Format buffer"))
+    (add-hook 'prog-mode-hook #'format-all-ensure-formatter))
 #+end_src
 * Highlight Todos
 #+begin_src emacs-lisp
-(use-package hl-todo
-  :hook ((org-mode . hl-todo-mode)
-         (prog-mode . hl-todo-mode))
-  :config
-  (setq hl-todo-highlight-punctuation ":"
-        hl-todo-keyword-faces
-        `(("TODO"       warning bold)
-          ("FIXME"      error bold)
-          ("HACK"       font-lock-constant-face bold)
-          ("REVIEW"     font-lock-keyword-face bold)
-          ("NOTE"       success bold)
-          ("DEPRECATED" font-lock-doc-face bold))))
+  (use-package hl-todo
+    :hook ((org-mode . hl-todo-mode)
+           (prog-mode . hl-todo-mode))
+    :config
+    (setq hl-todo-highlight-punctuation ":"
+          hl-todo-keyword-faces
+          `(("TODO"       warning bold)
+            ("FIXME"      error bold)
+            ("HACK"       font-lock-constant-face bold)
+            ("REVIEW"     font-lock-keyword-face bold)
+            ("NOTE"       success bold)
+            ("DEPRECATED" font-lock-doc-face bold))))
 #+end_src
-* Git
-** Git time machine
-#+begin_src emacs-lisp
-(use-package git-timemachine
-  :after git-timemachine
-  :hook (evil-normalize-keymaps . git-timemachine-hook)
-  :config
-    (evil-define-key 'normal git-timemachine-mode-map (kbd "C-j") 'git-timemachine-show-previous-revision)
-    (evil-define-key 'normal git-timemachine-mode-map (kbd "C-k") 'git-timemachine-show-next-revision)
-)
-#+end_src
+i* Git
 ** Magit
 #+begin_src emacs-lisp
-  (use-package magit)
+  (use-package transient)
+  (use-package magit
+    :ensure t
+    :config
+    (defadvice magit-status (around magit-fullscreen activate)
+      (window-configuration-to-register :magit-fullscreen)
+      ad-do-it
+      (delete-other-windows))
+
+    (add-hook 'magit-mode-hook
+              (lambda ()
+                (local-set-key (kbd "q")
+                               (lambda ()
+                                 (interactive)
+                                 (kill-buffer)
+                                 (jump-to-register :magit-fullscreen))))))
 #+end_src
 
 * Diminish
@@ -659,20 +699,10 @@ For Projects integration with dashboard
   	(centered-cursor-mode))))
     (my-global-centered-cursor-mode 1))
 #+end_src
-* Pairs ([], (), {})
-#+begin_src emacs-lisp
-  (electric-pair-mode 1)
-  (use-package evil-surround
-    :ensure t
-    :config
-    (global-evil-surround-mode 1))
-
-#+end_src
-
 * Auto Save and backup files
 #+begin_src emacs-lisp
-  ;; Disable backup files (file~)
-  (setq make-backup-files nil)
-  ;; Disable auto-save files (#file#)
-  (setq auto-save-default nil)
+;; Disable backup files (file~)
+(setq make-backup-files nil)
+;; Disable auto-save files (#file#)
+(setq auto-save-default nil)
 #+end_src>
