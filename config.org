@@ -18,7 +18,6 @@
 - [[#org-mode][Org Mode]]
   - [[#enabling-table-of-contents][Enabling Table of Contents]]
   - [[#enabling-org-bullets][Enabling Org Bullets]]
-  - [[#disable-electric-indent][Disable Electric Indent]]
   - [[#org-tempo][Org Tempo]]
 - [[#sudo-edit][Sudo edit]]
 - [[#theme][Theme]]
@@ -28,8 +27,6 @@
 - [[#all-the-icons][All the Icons]]
 - [[#font-icons][Font icons]]
 - [[#auto-save-and-backup-files][Auto Save and backup files]]
-  - [[#auto-save-directory][Auto Save directory]]
-  - [[#disable-backup-files][Disable backup files]]
 - [[#shells-and-terminals][Shells and Terminals]]
   - [[#eshell][Eshell]]
   - [[#vterm][Vterm]]
@@ -46,12 +43,14 @@
   - [[#flycheck][Flycheck]]
   - [[#completion-company][Completion (Company)]]
   - [[#c-hooks][C hooks]]
+  - [[#formatter][Formatter]]
 - [[#highlight-todos][Highlight Todos]]
 - [[#git][Git]]
   - [[#git-time-machine][Git time machine]]
   - [[#magit][Magit]]
 - [[#diminish][Diminish]]
 - [[#centered-scrolling][Centered scrolling]]
+- [[#pairs---][Pairs ([], (), {})]]
 
 * Elpaca Package Manager
 #+begin_src emacs-lisp
@@ -206,7 +205,8 @@
       "ld" '(flycheck-list-errors :wk "List diagnoses in file")
       "lr" '(lsp-rename :wk "Rename type/variable/function")
       "lg" '(lsp-find-definition :wk "Go to definition")
-      "li" '(lsp-goto-implementation :wk "Go to definition"))
+      "li" '(lsp-goto-implementation :wk "Go to definition")
+      "lc" '(compile :wk "Compile code with specified command"))
   )
 #+end_src
 
@@ -303,10 +303,6 @@ Org-bullets gives us attractive bullets rather than asterisks.
   (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
 #+end_src
 
-** Disable Electric Indent
-#+begin_src emacs-lisp
-  (electric-indent-mode -1)
-#+end_src
 ** Org Tempo
 #+begin_src emacs-lisp
   (require 'org-tempo)
@@ -387,17 +383,14 @@ Org-bullets gives us attractive bullets rather than asterisks.
   (use-package nerd-icons)
 #+end_src
 * Auto Save and backup files
-** Auto Save directory
 #+begin_src emacs-lisp
-  (setq auto-save-list-file-prefix "~/.emacs.d/autosave/")
-  (setq auto-save-file-name-transforms
-        '((".*" "~/.emacs.d/autosave/" t)))
-#+end_src
-** Disable backup files
-#+begin_src emacs-lisp
-  (setf make-backup-files nil)
-  (setf kill-buffer-delete-auto-save-files t)
-#+end_src
+  ;; Disable backup files (file~)
+  (setq make-backup-files nil)
+  ;; Disable auto-save files (#file#)
+  (setq auto-save-default nil)
+  ;; Disable lock files (.#file)
+  (setq create-lockfiles nil)
+#+end_src>
 * Shells and Terminals
 ** Eshell
 #+begin_src emacs-lisp
@@ -610,6 +603,20 @@ For Projects integration with dashboard
   (add-hook 'c-mode-hook 'lsp)
   (add-hook 'c++-mode-hook 'lsp)
 #+end_src
+** Formatter
+#+begin_src emacs-lisp
+(use-package format-all
+  :preface
+  (defun format-code ()
+    "Auto-format whole buffer."
+    (interactive)
+    (if (derived-mode-p 'prolog-mode)
+        (prolog-indent-buffer)
+      (format-all-buffer)))
+  :config
+  (my/leader-keys "lf" '(format-code :wk "Format buffer"))
+  (add-hook 'prog-mode-hook #'format-all-ensure-formatter))
+#+end_src
 * Highlight Todos
 #+begin_src emacs-lisp
 (use-package hl-todo
@@ -660,4 +667,13 @@ For Projects integration with dashboard
                          (list 'Info-mode 'term-mode 'eshell-mode 'shell-mode 'erc-mode)))
   	(centered-cursor-mode))))
     (my-global-centered-cursor-mode 1))
+#+end_src
+* Pairs ([], (), {})
+#+begin_src emacs-lisp
+  (electric-pair-mode 1)
+  (use-package evil-surround
+    :ensure t
+    :config
+    (global-evil-surround-mode 1))
+
 #+end_src
