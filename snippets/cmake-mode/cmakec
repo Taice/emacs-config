@@ -9,4 +9,10 @@ set(SOURCES
     src/main.c
 )
 
-add_executable(${2:${1:MyCProject}} \${SOURCES})
+add_executable(${1} \${SOURCES})
+
+target_compile_options(${1} PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+)
