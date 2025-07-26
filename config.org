@@ -222,7 +222,7 @@
     ;; Cmake
     (my/leader-keys
       "cc" '(:ignore t :wk "cmake")
-      "ccc" '(cmake-ide-run-cmake :wk "cmake compile"))
+      "ccc" '(cmake-ide-compile :wk "cmake compile"))
     ;; Magit
     (my/leader-keys
       "g" '(:ignore t :which-key "git")
