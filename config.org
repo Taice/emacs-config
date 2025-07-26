@@ -44,12 +44,11 @@
   - [[#rustic][Rustic]]
   - [[#flycheck][Flycheck]]
   - [[#completion-company][Completion (Company)]]
-  - [[#c-hooks][C hooks]]
+  - [[#c-stuff][C stuff]]
   - [[#formatter][Formatter]]
 - [[#highlight-todos][Highlight Todos]]
   - [[#magit][Magit]]
 - [[#diminish][Diminish]]
-- [[#centered-scrolling][Centered scrolling]]
 - [[#auto-save-and-backup-files][Auto Save and backup files]]
 
 * Elpaca Package Manager
@@ -155,7 +154,7 @@
       :global-prefix "M-SPC") ;; access leader in insert mode
     ;; Random
     (my/leader-keys
-      "gc" '(comment-line :wk "Comment-line")
+      "<TAB>" '(comment-line :wk "Comment-line")
       "w" '(save-buffer :wk "Write to file"))
     ;; File 
     (my/leader-keys
@@ -277,15 +276,15 @@ Defining the various fonts that Emacs will use.
 
 #+begin_src emacs-lisp
   (set-face-attribute 'default nil
-  		    :font "Iosevka"
+  		    :font "Iosevka extended"
   		    :height 110
   		    :weight 'medium)
   (set-face-attribute 'variable-pitch nil
-  		    :font "Iosevka"
+  		    :font "Iosevka extended"
   		    :height 120
   		    :weight 'medium)
   (set-face-attribute 'fixed-pitch nil
-  		    :font "Iosevka"
+  		    :font "Iosevka extended"
   		    :height 110
   		    :weight 'medium)
   ;; Makes commented text and keywords italics.
@@ -298,7 +297,7 @@ Defining the various fonts that Emacs will use.
   ;; This sets the default font on all graphical frames created after restarting Emacs.
   ;; Does the same thing as 'set-face-attribute default' above, but emacsclient fonts
   ;; are not right unless I also add this method of setting the default font.
-  (add-to-list 'default-frame-alist '(font . "Iosevka-14"))
+  (add-to-list 'default-frame-alist '(font . "Iosevka-15"))
 
   ;; Uncomment the following line if line spacing needs adjusting.
   (setq-default line-spacing 0.12)
@@ -540,6 +539,7 @@ For Projects integration with dashboard
     :hook (lsp . zig-mode-hook))
 #+end_src
 ** Lsp mode
+*** Lsp mode
 #+begin_src emacs-lisp
   (use-package lsp-mode
     :ensure
@@ -565,11 +565,37 @@ For Projects integration with dashboard
 
   (use-package lsp-ui
     :ensure
+    :after lsp-mode
     :commands lsp-ui-mode
+    :hook (lsp-mode . lsp-ui-mode)
     :custom
     (lsp-ui-peek-always-show t)
     (lsp-ui-sideline-show-hover nil)
-    (lsp-ui-doc-enable nil))
+    (lsp-ui-doc-enable nil)
+    :config
+    (defun my/lsp-ui-disable-inline-diagnostics-in-insert ()
+        (lsp-ui-sideline-mode -1))
+
+    (defun my/lsp-ui-enable-inline-diagnostics-in-normal ()
+        (lsp-ui-sideline-mode 1))
+
+    (add-hook 'evil-insert-state-entry-hook #'my/lsp-ui-disable-inline-diagnostics-in-insert)
+    (add-hook 'evil-insert-state-exit-hook  #'my/lsp-ui-enable-inline-diagnostics-in-normal))
+#+end_src
+*** Disable diagnostics in insert mode
+#+begin_src emacs-lisp
+    (defun my/lsp-ui-disable-inline-diagnostics-in-insert ()
+    "Disable inline diagnostics (virtual text) in insert mode."
+    (when (bound-and-true-p lsp-ui-mode)
+        (setq-local lsp-ui-sideline-enable nil)))
+
+    (defun my/lsp-ui-enable-inline-diagnostics-in-normal ()
+    "Enable inline diagnostics (virtual text) in normal mode."
+    (when (bound-and-true-p lsp-ui-mode)
+        (setq-local lsp-ui-sideline-enable t)))
+
+    (add-hook 'evil-insert-state-entry-hook #'my/lsp-ui-disable-inline-diagnostics-in-insert)
+    (add-hook 'evil-insert-state-exit-hook #'my/lsp-ui-enable-inline-diagnostics-in-normal)
 #+end_src
 ** Rustic
 #+begin_src emacs-lisp
@@ -624,10 +650,24 @@ For Projects integration with dashboard
     (add-hook 'prog-mode-hook 'yas-minor-mode)
     (add-hook 'text-mode-hook 'yas-minor-mode))
 #+end_src
-** C hooks
+** C stuff
+*** Hooks
 #+begin_src emacs-lisp
   (add-hook 'c-mode-hook 'lsp)
   (add-hook 'c++-mode-hook 'lsp)
+#+end_src
+*** Indent fix
+#+begin_src emacs-lisp
+  (setq c-basic-offset 4)
+#+end_src
+*** CMake
+#+begin_src emacs-lisp
+  (use-package cmake-mode
+    :ensure t)
+  (use-package cmake-ide
+    :ensure t
+    :config
+    (cmake-ide-setup))
 #+end_src
 ** Formatter
 #+begin_src emacs-lisp
@@ -684,21 +724,6 @@ i* Git
   (use-package diminish)
 #+end_src
 
-* Centered scrolling
-#+begin_src emacs-lisp
-  ;; keep the cursor centered to avoid sudden scroll jumps
-  (use-package centered-cursor-mode
-    :config
-    ;; disable in terminal modes
-    ;; http://stackoverflow.com/a/6849467/519736
-    ;; also disable in Info mode, because it breaks going back with the backspace key
-    (define-global-minor-mode my-global-centered-cursor-mode centered-cursor-mode
-      (lambda ()
-        (when (not (memq major-mode
-                         (list 'Info-mode 'term-mode 'eshell-mode 'shell-mode 'erc-mode)))
-  	(centered-cursor-mode))))
-    (my-global-centered-cursor-mode 1))
-#+end_src
 * Auto Save and backup files
 #+begin_src emacs-lisp
 ;; Disable backup files (file~)
