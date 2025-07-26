@@ -663,6 +663,7 @@ For Projects integration with dashboard
 *** CMake
 #+begin_src emacs-lisp
   (use-package cmake-mode
+    :mode "CMakeLists\\.txt\\'"
     :ensure t)
   (use-package cmake-ide
     :ensure t

@@ -1,0 +1,12 @@
+# -*- mode: snippet -*-
+# name: basic executable (C)
+# key: c
+# --
+cmake_minimum_required(VERSION 3.10)
+project(${1:MyCProject} LANGUAGES C)
+
+set(SOURCES
+    src/main.c
+)
+
+add_executable(${2:${1:MyCProject}} \${SOURCES})

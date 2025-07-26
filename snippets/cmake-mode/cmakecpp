@@ -1,0 +1,15 @@
+# -*- mode: snippet -*-
+# name: basic executable (C++)
+# key: cpp
+# --
+cmake_minimum_required(VERSION ${1:3.16})
+project(${2:MyCppProject} LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD ${3:17})
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(SOURCES
+    src/main.cpp
+)
+
+add_executable(${4:${2:MyCppProject}} \${SOURCES}))
